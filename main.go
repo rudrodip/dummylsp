@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"log"
 	"os"
 
+	"github.com/rudrodip/dummylsp/lsp"
 	"github.com/rudrodip/dummylsp/rpc"
 )
 
@@ -28,6 +30,15 @@ func main() {
 
 func handleMessage(logger *log.Logger, method string, contents []byte) {
 	logger.Printf("Receive message with method %s", method)
+
+	switch method {
+	case "initialize":
+		var request lsp.InitializeRequest
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("Error unmarshalling initialize request: %v", err)
+		}
+		logger.Printf("Client info: %s %s", request.Params.ClientInfo.Name, request.Params.ClientInfo.Version)
+	}
 }
 
 func getLogger(filename string) *log.Logger {
