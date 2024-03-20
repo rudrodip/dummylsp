@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/rudrodip/dummylsp/analysis"
 	"github.com/rudrodip/dummylsp/lsp"
 	"github.com/rudrodip/dummylsp/rpc"
 )
@@ -17,6 +18,8 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Split(rpc.Split)
 
+	state := analysis.NewState()
+
 	for scanner.Scan() {
 		msg := scanner.Bytes()
 		method, contents, err := rpc.DecodeMessage(msg)
@@ -24,11 +27,11 @@ func main() {
 			logger.Printf("Error decoding message: %v", err)
 			continue
 		}
-		handleMessage(logger, method, contents)
+		handleMessage(logger, state, method, contents)
 	}
 }
 
-func handleMessage(logger *log.Logger, method string, contents []byte) {
+func handleMessage(logger *log.Logger, state analysis.State, method string, contents []byte) {
 	logger.Printf("Receive message with method %s", method)
 
 	switch method {
@@ -49,9 +52,23 @@ func handleMessage(logger *log.Logger, method string, contents []byte) {
 	case "textDocument/didOpen":
 		var request lsp.DidOpenTextDocumentNotification
 		if err := json.Unmarshal(contents, &request); err != nil {
-			logger.Printf("Error unmarshalling initialize request: %v", err)
+			logger.Printf("Error unmarshalling textDocument/didOpen request: %v", err)
+			return
 		}
-		logger.Printf("Opened %s %s", request.Params.TextDocument.URI, request.Params.TextDocument.Text)
+		logger.Printf("Opened %s", request.Params.TextDocument.URI)
+		state.OpenDocument(request.Params.TextDocument.URI, request.Params.TextDocument.Text)
+
+	case "textDocument/didChange":
+		var request lsp.DidChangeTextDocumentNotification
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("Error unmarshalling textDocument/didChange request: %v", err)
+			return
+		}
+		logger.Printf("Changed %s", request.Params.TextDocument.URI)
+
+		for _, change := range request.Params.ContentChanges {
+			state.OpenDocument(request.Params.TextDocument.URI, change.Text)
+		}
 	}
 }
 
