@@ -24,7 +24,9 @@ type InitializeResult struct {
 	ServerInfo   *ServerInfo        `json:"serverInfo,omitempty"`
 }
 
-type ServerCapabilities struct{}
+type ServerCapabilities struct {
+	TextDocumentSync int `json:"textDocumentSync"`
+}
 
 type ServerInfo struct {
 	Name    string `json:"name"`
@@ -38,7 +40,9 @@ func NewInitializeResponse(id int) InitializeResponse {
 			RPC: "2.0",
 		},
 		Result: InitializeResult{
-			Capabilities: ServerCapabilities{},
+			Capabilities: ServerCapabilities{
+				TextDocumentSync: 1,
+			},
 			ServerInfo: &ServerInfo{
 				Name:    "dummylsp",
 				Version: "0.0.1-alpha",
