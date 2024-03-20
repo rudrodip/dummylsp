@@ -38,6 +38,13 @@ func handleMessage(logger *log.Logger, method string, contents []byte) {
 			logger.Printf("Error unmarshalling initialize request: %v", err)
 		}
 		logger.Printf("Client info: %s %s", request.Params.ClientInfo.Name, request.Params.ClientInfo.Version)
+
+		msg := lsp.NewInitializeResponse(request.ID)
+		reply := rpc.EncodeMessage(msg)
+
+		writer := os.Stdout
+		writer.Write([]byte(reply))
+		logger.Print("Sent response")
 	}
 }
 
