@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"log"
 	"os"
 
@@ -20,6 +21,8 @@ func main() {
 
 	state := analysis.NewState()
 
+	writer := os.Stdout
+
 	for scanner.Scan() {
 		msg := scanner.Bytes()
 		method, contents, err := rpc.DecodeMessage(msg)
@@ -27,11 +30,11 @@ func main() {
 			logger.Printf("Error decoding message: %v", err)
 			continue
 		}
-		handleMessage(logger, state, method, contents)
+		handleMessage(logger, writer, state, method, contents)
 	}
 }
 
-func handleMessage(logger *log.Logger, state analysis.State, method string, contents []byte) {
+func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, method string, contents []byte) {
 	logger.Printf("Receive message with method %s", method)
 
 	switch method {
@@ -43,10 +46,7 @@ func handleMessage(logger *log.Logger, state analysis.State, method string, cont
 		logger.Printf("Client info: %s %s", request.Params.ClientInfo.Name, request.Params.ClientInfo.Version)
 
 		msg := lsp.NewInitializeResponse(request.ID)
-		reply := rpc.EncodeMessage(msg)
-
-		writer := os.Stdout
-		writer.Write([]byte(reply))
+		writeResponse(writer, msg)
 		logger.Print("Sent response")
 
 	case "textDocument/didOpen":
@@ -69,6 +69,18 @@ func handleMessage(logger *log.Logger, state analysis.State, method string, cont
 		for _, change := range request.Params.ContentChanges {
 			state.OpenDocument(request.Params.TextDocument.URI, change.Text)
 		}
+
+	case "textDocument/hover":
+		var request lsp.HoverRequest
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("Error unmarshalling textDocument/hover request: %v", err)
+			return
+		}
+
+		// create a response
+		response := state.Hover(request.ID, request.Params.TextDocument.URI, request.Params.Position)
+		// write back
+		writeResponse(writer, response)
 	}
 }
 
@@ -79,4 +91,9 @@ func getLogger(filename string) *log.Logger {
 	}
 
 	return log.New(logFile, "[dummylsp]", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+func writeResponse(writer io.Writer, msg any) {
+	reply := rpc.EncodeMessage(msg)
+	writer.Write([]byte(reply))
 }
