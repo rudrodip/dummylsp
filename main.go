@@ -51,7 +51,7 @@ func handleMessage(logger *log.Logger, method string, contents []byte) {
 		if err := json.Unmarshal(contents, &request); err != nil {
 			logger.Printf("Error unmarshalling initialize request: %v", err)
 		}
-		logger.Printf("Opened %s", request.Params.TextDocument.URI)
+		logger.Printf("Opened %s %s", request.Params.TextDocument.URI, request.Params.TextDocument.Text)
 	}
 }
 
